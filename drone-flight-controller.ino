@@ -113,6 +113,9 @@ int battery_voltage;
  * Setup configuration
  */
 void setup() {
+  //comunicacion serial
+  Serial.begin(57600);
+  
     // Start I2C communication
     Wire.begin();
     TWBR = 12; // Set the I2C clock speed to 400kHz.
@@ -131,15 +134,20 @@ void setup() {
     configureChannelMapping();
 
     // Configure interrupts for receiver
-    PCICR  |= (1 << PCIE0);  // Set PCIE0 to enable PCMSK0 scan
+    /*
+    *Cada vez que cambie de estado 
+    *
+    *
+    */
+    PCICR  |= (1 << PCIE0);  // Set PCIE0 to enable PCMSK0 scan //Habilita el registro de interrupciones
     PCMSK0 |= (1 << PCINT0); // Set PCINT0 (digital input 8) to trigger an interrupt on state change
     PCMSK0 |= (1 << PCINT1); // Set PCINT1 (digital input 9) to trigger an interrupt on state change
     PCMSK0 |= (1 << PCINT2); // Set PCINT2 (digital input 10)to trigger an interrupt on state change
     PCMSK0 |= (1 << PCINT3); // Set PCINT3 (digital input 11)to trigger an interrupt on state change
 
-    period = (1000000/FREQ) ; // Sampling period in µs
+    period = (1000000/FREQ) ; // Sampling period in µs // sampling == muestreo y muestrea en 250 HZ
 
-    // Initialize loop_timer
+    // Initialize loop_timer //diferencia de tiempo entre loop
     loop_timer = micros();
 
     // Turn LED off now setup is done
@@ -150,14 +158,17 @@ void setup() {
  * Main program loop
  */
 void loop() {
+  //   Serial.println(measures[ROLL]);
     // 1. First, read raw values from MPU-6050
     readSensor();
 
     // 2. Calculate angles from gyro & accelerometer's values
     calculateAngles();
 
+// punto de referencia
     // 3. Calculate set points of PID controller
     calculateSetPoints();
+    
 
     // 4. Calculate errors comparing angular motions to set points
     calculateErrors();
@@ -307,7 +318,7 @@ void pidController() {
     float yaw_pid      = 0;
     float pitch_pid    = 0;
     float roll_pid     = 0;
-    int   throttle     = pulse_length[mode_mapping[THROTTLE]];
+    int   throttle     = pulse_length[mode_mapping[THROTTLE]];//longitud del pulso a mandar a los motores
 
     // Initialize motor commands with throttle
     pulse_length_esc1 = throttle;
@@ -328,6 +339,7 @@ void pidController() {
         roll_pid  = minMax(roll_pid, -400, 400);
 
         // Calculate pulse duration for each ESC
+        //altura que le das con el mando
         pulse_length_esc1 = throttle - roll_pid - pitch_pid + yaw_pid;
         pulse_length_esc2 = throttle + roll_pid - pitch_pid - yaw_pid;
         pulse_length_esc3 = throttle - roll_pid + pitch_pid - yaw_pid;
@@ -428,6 +440,10 @@ void calibrateMpu6050() {
 
     for (int i = 0; i < max_samples; i++) {
         readSensor();
+        /*
+        acumulador 
+        
+        */
 
         gyro_offset[X] += gyro_raw[X];
         gyro_offset[Y] += gyro_raw[Y];
@@ -443,6 +459,7 @@ void calibrateMpu6050() {
     }
 
     // Calculate average offsets
+    /*saca promedio de 2000 muestras para precision*/
     gyro_offset[X] /= max_samples;
     gyro_offset[Y] /= max_samples;
     gyro_offset[Z] /= max_samples;
@@ -450,7 +467,7 @@ void calibrateMpu6050() {
 
 /**
  * Make sure that given value is not over min_value/max_value range.
- *
+ *  FUNCION PARA PONER EN RANGO 
  * @param float value     : The value to convert
  * @param float min_value : The min value
  * @param float max_value : The max value
