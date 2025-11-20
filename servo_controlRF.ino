@@ -77,6 +77,7 @@ ISR(PCINT0_vect) {
     pulse_length[1] = current_time - timer[1];
   }
 
+  
   // --- CANAL 3 (PIN 10) ---
   if (PINB & B00000100) { 
     if (previous_state[2] == LOW) {
